@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -11,6 +12,7 @@ public class MainManager : MonoBehaviour
     public Rigidbody Ball;
 
     public Text ScoreText;
+    public Text maxScoreText;
     public GameObject GameOverText;
     
     private bool m_Started = false;
@@ -18,7 +20,40 @@ public class MainManager : MonoBehaviour
     
     private bool m_GameOver = false;
 
-    
+    public string nickHighScore;
+    public int highScore;
+
+    [System.Serializable]
+    class SaveData
+    {
+        public int highScore;
+        public string nickName;
+    }
+
+    public void SaveHighScore()
+    {
+        SaveData data = new SaveData();
+        data.highScore = highScore;
+        data.nickName = nickHighScore;
+
+        string json = JsonUtility.ToJson(data);
+
+        File.WriteAllText(Application.persistentDataPath + "/savefile.json", json);
+    }
+
+    public void LoadHighScore()
+    {
+        string path = Application.persistentDataPath + "/savefile.json";
+        if (File.Exists(path))
+        {
+            string json = File.ReadAllText(path);
+            SaveData data = JsonUtility.FromJson<SaveData>(json);
+
+            highScore = data.highScore;
+            nickHighScore = data.nickName;
+        }
+    }
+
     // Start is called before the first frame update
     void Start()
     {
@@ -36,6 +71,8 @@ public class MainManager : MonoBehaviour
                 brick.onDestroyed.AddListener(AddPoint);
             }
         }
+
+        LoadHighScore();
     }
 
     private void Update()
@@ -52,11 +89,22 @@ public class MainManager : MonoBehaviour
                 Ball.transform.SetParent(null);
                 Ball.AddForce(forceDir * 2.0f, ForceMode.VelocityChange);
             }
+
+            maxScoreText.text = "Best score " + $"{nickHighScore}" + " : " + $"{highScore}";
         }
         else if (m_GameOver)
         {
+            if(highScore <= m_Points)
+            {
+                highScore = m_Points;
+                nickHighScore = MenuHandlerUI.instance.nickName;
+            }
+
+            maxScoreText.text = "Best score " + $"{nickHighScore}" + " : " + $"{highScore}";
+
             if (Input.GetKeyDown(KeyCode.Space))
             {
+                SaveHighScore();
                 SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
             }
         }
